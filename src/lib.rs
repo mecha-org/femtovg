@@ -828,10 +828,21 @@ where
 
     /// Fills the provided Path with the specified Paint.
     pub fn fill_path(&mut self, path: &Path, paint: &Paint) {
-        self.fill_path_internal(path, &paint.flavor, paint.shape_anti_alias, paint.fill_rule);
+        self.fill_path_internal(path, &paint.flavor, paint.shape_anti_alias, paint.fill_rule, false);
     }
 
-    fn fill_path_internal(&mut self, path: &Path, paint_flavor: &PaintFlavor, anti_alias: bool, fill_rule: FillRule) {
+    pub fn fill_path_yuyv(&mut self, path: &Path, paint: &Paint) {
+        self.fill_path_internal(path, &paint.flavor, paint.shape_anti_alias, paint.fill_rule, true);
+    }
+
+    fn fill_path_internal(
+        &mut self,
+        path: &Path,
+        paint_flavor: &PaintFlavor,
+        anti_alias: bool,
+        fill_rule: FillRule,
+        yuyv: bool,
+    ) {
         let mut paint_flavor = paint_flavor.clone();
         let transform = self.state().transform;
 
@@ -881,7 +892,7 @@ where
 
         // GPU uniforms
         let flavor = if path_cache.contours.len() == 1 && path_cache.contours[0].convexity == Convexity::Convex {
-            let params = Params::new(
+            let mut params = Params::new(
                 &self.images,
                 &transform,
                 &paint_flavor,
@@ -891,6 +902,9 @@ where
                 self.fringe_width,
                 -1.0,
             );
+            if yuyv {
+                params.use_yuyv_image_format();
+            }
 
             CommandType::ConvexFill { params }
         } else {

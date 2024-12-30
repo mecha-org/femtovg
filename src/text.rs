@@ -1102,7 +1102,13 @@ impl GlyphAtlas {
                             },
                         );
                     } else {
-                        canvas.fill_path_internal(path, &PaintFlavor::Color(mask_color), false, FillRule::EvenOdd);
+                        canvas.fill_path_internal(
+                            path,
+                            &PaintFlavor::Color(mask_color),
+                            false,
+                            FillRule::EvenOdd,
+                            false,
+                        );
                     }
 
                     canvas.restore();
@@ -1291,7 +1297,7 @@ pub(crate) fn render_direct<T: Renderer>(
                         },
                     );
                 } else {
-                    canvas.fill_path_internal(path.borrow(), paint_flavor, anti_alias, FillRule::EvenOdd);
+                    canvas.fill_path_internal(path.borrow(), paint_flavor, anti_alias, FillRule::EvenOdd, false);
                 }
             }
             #[cfg(feature = "image-loading")]

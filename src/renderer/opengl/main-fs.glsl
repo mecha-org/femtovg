@@ -37,6 +37,7 @@ varying vec2 fpos;
  #define SHADER_TYPE_FilterImage 4
  #define SHADER_TYPE_FillColor 5
  #define SHADER_TYPE_TextureCopyUnclipped 6
+ #define SHADER_TYPE_YuyvImage 7
 
 float sdroundrect(vec2 pt, vec2 ext, float rad) {
     vec2 ext2 = ext - vec2(rad,rad);
@@ -76,6 +77,42 @@ vec4 renderImageGradient() {
 
     float d = clamp((sdroundrect(pt, extent, radius) + feather*0.5) / feather, 0.0, 1.0);
     return texture2D(tex, vec2(d, 0.0));//mix(innerCol,outerCol,d);
+}
+
+vec4 renderYuyvImage() {
+    // Calculate color from texture
+    vec2 pt = (paintMat * vec3(fpos, 1.0)).xy / (extent * 2.0);
+    vec4 yuyv = texture2D(tex, pt) * 255.0;
+
+
+    float y0= yuyv.x;
+    float u = yuyv.y;
+    float y1= yuyv.z;
+    float v = yuyv.w;
+
+    float r0 = y0 + 1.370705 * (v - 128.);
+    float g0 = y0 - 0.698001 * (v - 128.) - 0.337633 * (u - 128.);
+    float b0 = y0 + 1.732446 * (u - 128.);
+
+    float r1 = y1 + 1.370705 * (v - 128.);
+    float g1 = y1 - 0.698001 * (v - 128.) - 0.337633 * (u - 128.);
+    float b1 = y1 + 1.732446 * (u - 128.);
+
+    // if (mod(pt.x * viewSize.x, 2.0) < 1.0) {
+    //     r0 = r1;
+    //     g0 = g1;
+    //     b0 = b1;
+    // }
+
+    vec4 color = vec4(r0, g0, b0, 255.0);
+    color /= 255.0;
+
+    if (texType == 1) color = vec4(color.xyz * color.w, color.w);
+    if (texType == 2) color = vec4(color.x);
+
+    // Apply color tint and alpha.
+    color *= innerCol;
+    return color;
 }
 
 vec4 renderImage() {
@@ -168,6 +205,9 @@ void main(void) {
 #elif SELECT_SHADER == SHADER_TYPE_FilterImage
     // Filter Image
     result = renderFilteredImage();
+#elif SELECT_SHADER == SHADER_TYPE_YuyvImage
+    // YUYV Image
+    result = renderYuyvImage();
 #else
 #error A shader variant must be selected with the SELECT_SHADER pre-processor variable
 #endif
