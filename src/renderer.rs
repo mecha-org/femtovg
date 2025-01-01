@@ -147,6 +147,7 @@ pub enum ShaderType {
     FilterImage,
     FillColor,
     TextureCopyUnclipped,
+    YuyvImage,
 }
 
 impl Default for ShaderType {
@@ -165,6 +166,7 @@ impl ShaderType {
             Self::FilterImage => 4,
             Self::FillColor => 5,
             Self::TextureCopyUnclipped => 6,
+            Self::YuyvImage => 7,
         }
     }
     pub fn to_f32(self) -> f32 {

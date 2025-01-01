@@ -244,4 +244,8 @@ impl Params {
     pub(crate) fn uses_glyph_texture(self) -> bool {
         self.glyph_texture_type != 0
     }
+
+    pub(crate) fn use_yuyv_image_format(&mut self) {
+        self.shader_type = ShaderType::YuyvImage;
+    }
 }

@@ -37,6 +37,7 @@ varying vec2 fpos;
  #define SHADER_TYPE_FilterImage 4
  #define SHADER_TYPE_FillColor 5
  #define SHADER_TYPE_TextureCopyUnclipped 6
+ #define SHADER_TYPE_YuyvImage 7
 
 float sdroundrect(vec2 pt, vec2 ext, float rad) {
     vec2 ext2 = ext - vec2(rad,rad);
@@ -76,6 +77,51 @@ vec4 renderImageGradient() {
 
     float d = clamp((sdroundrect(pt, extent, radius) + feather*0.5) / feather, 0.0, 1.0);
     return texture2D(tex, vec2(d, 0.0));//mix(innerCol,outerCol,d);
+}
+
+// Converts YUYV (YUV422) format texture data to RGB color
+// TODO: Pick the correct current pixel
+vec4 renderYuyvImage() {
+    // Transform fragment position using paint matrix and normalize by extent
+    vec2 pt = (paintMat * vec3(fpos, 1.0)).xy / (extent * 2.0);
+    
+    // Sample YUYV texture and scale to 0-255 range
+    // YUYV format packs 2 pixels into one texel: [Y0 U Y1 V]
+    vec4 yuyv = texture2D(tex, pt) * 255.0;
+    
+    // Extract individual Y, U, V components
+    float y0 = yuyv.x;  // Y value for first pixel
+    float u  = yuyv.y;  // U (Cb) shared between two pixels
+    float y1 = yuyv.z;  // Y value for second pixel
+    float v  = yuyv.w;  // V (Cr) shared between two pixels
+
+    // Convert YUV to RGB for first pixel using standard conversion matrix
+    // Reference: BT.601/BT.709 color space conversion
+    float r0 = y0 + 1.370705 * (v - 128.);  // Red component 
+    float g0 = y0 - 0.698001 * (v - 128.) - 0.337633 * (u - 128.);  // Green component
+    float b0 = y0 + 1.732446 * (u - 128.);  // Blue component
+
+    // Convert YUV to RGB for second pixel
+    float r1 = y1 + 1.370705 * (v - 128.);
+    float g1 = y1 - 0.698001 * (v - 128.) - 0.337633 * (u - 128.);
+    float b1 = y1 + 1.732446 * (u - 128.);
+
+    // Use first pixel's RGB values for output color
+    vec4 color = vec4(r0, g0, b0, 255.0);
+    
+    // Normalize color values back to 0-1 range
+    color /= 255.0;
+
+    // Handle different texture types:
+    // texType == 1: Premultiplied alpha
+    // texType == 2: Single channel (grayscale)
+    if (texType == 1) color = vec4(color.xyz * color.w, color.w);
+    if (texType == 2) color = vec4(color.x);
+
+    // Apply color tinting and alpha modification
+    color *= innerCol;
+    
+    return color;
 }
 
 vec4 renderImage() {
@@ -168,6 +214,9 @@ void main(void) {
 #elif SELECT_SHADER == SHADER_TYPE_FilterImage
     // Filter Image
     result = renderFilteredImage();
+#elif SELECT_SHADER == SHADER_TYPE_YuyvImage
+    // YUYV Image
+    result = renderYuyvImage();
 #else
 #error A shader variant must be selected with the SELECT_SHADER pre-processor variable
 #endif
